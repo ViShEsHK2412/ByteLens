@@ -8,17 +8,17 @@ import types
 
 app = typer.Typer(no_args_is_help=True)
 
+def analyzer_code(code : types.CodeType):
+    dis.dis(code)
+    for const in code.co_consts:
+        if isinstance(const,types.CodeType) :
+            analyzer_code(const)
 
 @app.command()
 def analyze(file:str):
     source = pathlib.Path(file).read_text('utf-8')
     code = compile(source,str(file),"exec")
-    for const in code.co_consts:
-        if isinstance(const,types.CodeType) :
-            dis.dis(const)
-
-    
-
+    analyzer_code(code)
 
 
 @app.command()
