@@ -6,5 +6,6 @@ dist/
 wheels/
 *.egg-info
 trace.py
+temp.py
 # Virtual environments
 .venv
