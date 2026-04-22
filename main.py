@@ -20,17 +20,26 @@ def analyzer_code(code : types.CodeType):
         "arg_value": instr.argval.co_name if hasattr(instr.argval, "co_name") else instr.argval
     }
     result.append(item)
-    json_output = json.dumps(result ,indent = 2)
-    print(json_output)
+    # Created another List called Children to create a better structured JSON
+    children = []
     for const in code.co_consts:
         if isinstance(const,types.CodeType):
-            analyzer_code(const)
+    #Appending the recursive Code Object which is basically another function inside th children List
+            children.append(analyzer_code(const))
+    # Returning a more Structred JSON which will show use the name of the Code Oject its instructions and the children i.e. its functions inside that instruction
+    return {
+        "name": code.co_name,
+        "instructions": result,
+        "children": children
+    }
 
 @app.command()
 def analyze(file:str):
     source = pathlib.Path(file).read_text('utf-8')
     code = compile(source,str(file),"exec")
-    analyzer_code(code)
+    final_result = analyzer_code(code)
+    # Instead of printing JSON after every loop shifted it to the CLI Command to print the result all at once
+    print(json.dumps(final_result,indent=2))
 
 
 @app.command()
