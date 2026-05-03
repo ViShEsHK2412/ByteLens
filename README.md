@@ -1,4 +1,4 @@
-# pycore — Python Bytecode & Memory Analyzer
+# ByteLens — Python Bytecode & Memory Analyzer
 
 > A low-level CLI tool that exposes what Python is actually doing — bytecode structure, memory allocations, and reference cycles — using nothing but Python internals.
 
@@ -6,7 +6,7 @@
 
 ## Overview
 
-Most Python developers treat the runtime as a black box. `pycore` breaks that box open. It gives you a structured view of how your code compiles to bytecode, where memory is being allocated line by line, and whether your program is leaking objects through reference cycles.
+Most Python developers treat the runtime as a black box. `ByteLens` breaks that box open. It gives you a structured view of how your code compiles to bytecode, where memory is being allocated line by line, and whether your program is leaking objects through reference cycles.
 
 Built entirely using Python's own introspection modules — no external analysis dependencies.
 
@@ -14,7 +14,7 @@ Built entirely using Python's own introspection modules — no external analysis
 
 ## Commands
 
-### `pycore analyze <file>`
+### `ByteLens analyze <file>`
 
 Disassembles a Python file into a structured JSON tree of bytecode instructions, organized by function.
 
@@ -60,7 +60,7 @@ uv run main.py analyze main.py
 
 ---
 
-### `pycore trace <file>`
+### `ByteLens trace <file>`
 
 Executes a Python file and captures memory allocations line by line, plus reference cycle detection.
 
@@ -134,8 +134,8 @@ memory stats + cycle count
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/pycore
-cd pycore
+git clone https://github.com/yourusername/ByteLens
+cd ByteLens
 uv sync
 ```
 
@@ -167,7 +167,7 @@ uv run main.py trace cycle_test.py
 ## Project Structure
 
 ```
-pycore/
+ByteLens/
 ├── main.py           # CLI entrypoint — analyze + trace commands
 ├── pyproject.toml    # uv package config
 ├── .python-version
