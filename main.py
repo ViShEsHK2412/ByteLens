@@ -5,6 +5,7 @@ from typing import Annotated
 import tracemalloc
 import types
 import json
+import gc
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -46,13 +47,17 @@ def analyze(file:str):
 def trace(file:str):
     source = pathlib.Path(file).read_text('utf-8')
     code = compile(source,str(file),"exec")
+    gc.set_debug(gc.DEBUG_SAVEALL)
     tracemalloc.start()
     exec(code)
     snapshot = tracemalloc.take_snapshot()
+    gc.collect()
+    cycles = gc.garbage
     stats = snapshot.statistics('lineno')
     tracemalloc.stop()
     for stat in stats:
         print(f"The status after tracing is -->{stat}")
+    print(f"The GC refrence Cycles are: {len(cycles)}")
 
 
 if __name__ == "__main__":

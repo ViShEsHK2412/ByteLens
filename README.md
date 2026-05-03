@@ -1,158 +1,181 @@
-# 🧠 Python Bytecode & Memory Analyzer
+# pycore — Python Bytecode & Memory Analyzer
 
-> A low-level Python analysis tool that explores **bytecode structure, memory behavior, and reference patterns** using Python internals.
-
----
-
-## 🚀 Overview
-
-This project aims to build a **deep introspection tool for Python programs**, focusing on:
-
-* 🔍 Bytecode analysis (`dis`)
-* 🧠 Code object traversal (`compile`, `co_consts`)
-* 📊 Memory tracking (`tracemalloc`)
-* ♻️ Reference & GC exploration (`gc`)
-
-Instead of treating Python as a black box, this tool breaks down **how Python actually executes code under the hood**.
+> A low-level CLI tool that exposes what Python is actually doing — bytecode structure, memory allocations, and reference cycles — using nothing but Python internals.
 
 ---
 
-## ⚙️ Current Features
+## Overview
 
-### ✅ Bytecode Inspection
+Most Python developers treat the runtime as a black box. `pycore` breaks that box open. It gives you a structured view of how your code compiles to bytecode, where memory is being allocated line by line, and whether your program is leaking objects through reference cycles.
 
-* Compiles Python source into code objects
-* Disassembles bytecode using `dis`
-* Understands instruction structure:
-
-  * offset
-  * opcode
-  * argument
+Built entirely using Python's own introspection modules — no external analysis dependencies.
 
 ---
 
-### ✅ Code Object Discovery
+## Commands
 
-* Extracts `co_consts` from compiled code
-* Detects nested **code objects (functions, lambdas, etc.)**
-* Differentiates:
+### `pycore analyze <file>`
 
-  * executable code objects
-  * regular constants (`None`, numbers, strings)
+Disassembles a Python file into a structured JSON tree of bytecode instructions, organized by function.
 
----
-
-### 🚧 Recursive Code Traversal (In Progress)
-
-* Building a recursive analyzer to walk:
-
-```text
-module → function → nested function → ...
+```bash
+uv run main.py analyze main.py
 ```
 
-* Goal: represent Python execution as a **tree of code objects**
-
----
-
-### 🚧 Structured Output (In Progress)
-
-* Moving from raw `dis` output → structured data
-* Planned format:
-
+**Output:**
 ```json
 {
-  "name": "function_name",
-  "instructions": [...],
-  "children": [...]
+  "name": "<module>",
+  "instructions": [
+    {
+      "offset": 8,
+      "opcode": "RETURN_CONST",
+      "argument": 1,
+      "arg_type": "NoneType",
+      "arg_value": null
+    }
+  ],
+  "children": [
+    {
+      "name": "outer_function",
+      "instructions": [...],
+      "children": [
+        {
+          "name": "inner_function",
+          "instructions": [...],
+          "children": []
+        }
+      ]
+    }
+  ]
 }
 ```
 
----
-
-### 🚧 Memory Analysis (Experimental)
-
-* Using `tracemalloc` to:
-
-  * track allocations
-  * identify high-memory lines
-* Future: correlate bytecode ↔ memory usage
+**What it does:**
+- Reads and compiles the source file using `compile()`
+- Disassembles every code object using `dis.get_instructions()`
+- Recursively walks `co_consts` to find nested functions and lambdas
+- Returns a tree where each node is a function with its full bytecode listing
+- Each instruction includes offset, opcode name, argument, argument type, and resolved argument value
 
 ---
 
-### 🔜 Planned: GC & Reference Analysis
+### `pycore trace <file>`
 
-* Explore `gc` module
-* Detect:
+Executes a Python file and captures memory allocations line by line, plus reference cycle detection.
 
-  * reference relationships
-  * potential cycles
-* Build object graph understanding
+```bash
+uv run main.py trace trace.py
+```
 
----
+**Output:**
+```
+The status after tracing is -->C:\path\to\file.py:12: size=256 B, count=1, average=256 B
+The GC reference cycles are: 13
+```
 
-## 🧠 Key Concepts Learned
-
-This project is heavily focused on understanding:
-
-* Python **code objects**
-* `co_consts`, `co_names`, execution model
-* Bytecode instruction format:
-
-  ```
-  offset | opcode | argument
-  ```
-* Difference between:
-
-  * structure (code objects)
-  * behavior (bytecode)
-* Internal execution model (inspired by CPython)
+**What it does:**
+- Compiles and executes the target file using `exec()`
+- Wraps execution with `tracemalloc` to capture per-line memory allocation stats
+- Sets `gc.DEBUG_SAVEALL` before execution so the garbage collector saves all cycle candidates
+- Calls `gc.collect()` after execution to force a full GC pass
+- Reads `gc.garbage` to report how many reference cycles were detected during execution
 
 ---
 
-## 🛠️ Tech Stack
+## How It Works Internally
 
-* Python 3.11+
-* `dis` — bytecode inspection
-* `types` — code object detection
-* `tracemalloc` — memory tracking
-* `gc` — garbage collection analysis
+### Bytecode Analysis Pipeline
+
+```
+source file
+    ↓ pathlib.Path.read_text()
+raw source string
+    ↓ compile(source, filename, "exec")
+code object
+    ↓ dis.get_instructions(code)
+instruction stream
+    ↓ recursive co_consts traversal
+structured JSON tree
+```
+
+### Memory + Cycle Detection Pipeline
+
+```
+source file
+    ↓ compile()
+code object
+    ↓ gc.set_debug(gc.DEBUG_SAVEALL)  ← flag set before execution
+    ↓ tracemalloc.start()
+    ↓ exec(code)                      ← program runs here
+    ↓ tracemalloc.take_snapshot()     ← memory captured immediately after
+    ↓ gc.collect()                    ← GC runs, saves cycles to gc.garbage
+    ↓ cycles = gc.garbage             ← snapshot of what was found
+memory stats + cycle count
+```
 
 ---
 
-## 📂 Project Status
+## Tech Stack
 
-> 🟡 **Active Development**
-
-Current focus:
-
-* Recursive traversal of code objects
-* Clean structured representation of bytecode
-* Building a proper analysis pipeline
-
----
-
-## 🎯 Roadmap
-
-* [x] Basic disassembly
-* [x] Code object detection via `co_consts`
-* [ ] Recursive traversal of nested code
-* [ ] Structured JSON output
-* [ ] Memory + bytecode correlation
-* [ ] Reference graph analysis
-* [ ] Cycle detection
+| Module | Role |
+|---|---|
+| `dis` | Bytecode disassembly |
+| `types.CodeType` | Code object type detection for recursive traversal |
+| `compile()` | Source → code object compilation |
+| `tracemalloc` | Per-line memory allocation tracking |
+| `gc` | Garbage collector cycle detection |
+| `json` | Structured output formatting |
+| `pathlib` | File reading |
+| `typer` | CLI interface |
 
 ---
 
-## 💡 Vision
+## Installation
 
-The goal is to evolve this into:
+```bash
+git clone https://github.com/yourusername/pycore
+cd pycore
+uv sync
+```
 
-> A **mini Python introspection engine** that explains:
->
-> * how code is executed
-> * where memory is used
-> * why objects stay alive
+---
 
+## Usage Examples
+
+Analyze your own project files:
+```bash
+uv run main.py analyze src/app.py
+uv run main.py trace src/app.py
+```
+
+Test cycle detection with a known cycle:
+```python
+# cycle_test.py
+a = {}
+b = {}
+a['ref'] = b
+b['ref'] = a
+```
+```bash
+uv run main.py trace cycle_test.py
+# The GC reference cycles are: 13
+```
+
+---
+
+## Project Structure
+
+```
+pycore/
+├── main.py           # CLI entrypoint — analyze + trace commands
+├── pyproject.toml    # uv package config
+├── .python-version
+├── README.md
+└── .gitignore
+```
+
+---
 
 
 

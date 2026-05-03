@@ -7,5 +7,6 @@ wheels/
 *.egg-info
 trace.py
 temp.py
+test_edge.py
 # Virtual environments
 .venv
